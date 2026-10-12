@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚂 字母小火車：100個 CVC 聽音拼字大冒險</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Sans+TC:wght@400;600;700;900&display=swap');
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background: radial-gradient(circle at top, #0284c7, #0369a1, #0c4a6e);
+      min-height: 100vh;
+    }
+    .game-font {
+      font-family: 'Fredoka One', 'Noto Sans TC', cursive, sans-serif;
+    }
+
+    /* 輪子轉動 */
+    .train-wheel {
+      animation: rotateWheel 2s linear infinite;
+      transform-origin: center;
+    }
+    @keyframes rotateWheel {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* 煙囪冒煙 */
+    .smoke-puff {
+      animation: smokeRise 2s ease-out infinite;
+      opacity: 0;
+    }
+    @keyframes smokeRise {
+      0% { transform: translateY(0) scale(0.6); opacity: 0.8; }
+      50% { opacity: 0.5; }
+      100% { transform: translateY(-40px) translateX(-20px) scale(1.6); opacity: 0; }
+    }
+
+    /* 車廂跳動 */
+    .cart-bounce {
+      animation: cartHop 0.4s ease-in-out;
+    }
+    @keyframes cartHop {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+  </style>
+</head>
+<body class="text-slate-100 flex flex-col justify-between min-h-screen p-2 sm:p-4 select-none overflow-x-hidden">
+
+  <!-- Header 標題與關卡切換 -->
+  <header class="max-w-5xl mx-auto w-full mb-3 bg-slate-900/85 border border-sky-500/50 p-3 sm:p-4 rounded-3xl backdrop-blur-md shadow-2xl flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center space-x-3">
+      <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-rose-500 flex items-center justify-center text-2xl text-white shadow-lg shadow-rose-500/30">
+        🚂
+      </div>
+      <div>
+        <h1 class="game-font text-lg sm:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-rose-200 to-sky-300">
+          字母小火車 • CVC 100 字大冒險
+        </h1>
+        <p class="text-xs text-sky-200 font-medium">100 個核心 CVC 單字庫 • 聽音拼字 • 建立 Blending 能力</p>
+      </div>
+    </div>
+
+    <!-- 關卡模式選擇 -->
+    <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+      <button onclick="setMode('first')" id="mode-btn-first" class="px-2.5 py-1.5 rounded-xl text-xs font-black transition border border-amber-400 bg-amber-500 text-slate-950 shadow">
+        1. 車頭首音
+      </button>
+      <button onclick="setMode('last')" id="mode-btn-last" class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition border border-slate-700 bg-slate-800 text-slate-300 hover:text-white">
+        2. 車尾煞車
+      </button>
+      <button onclick="setMode('middle')" id="mode-btn-middle" class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition border border-slate-700 bg-slate-800 text-slate-300 hover:text-white">
+        3. 短母音心臟
+      </button>
+      <button onclick="setMode('all')" id="mode-btn-all" class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition border border-slate-700 bg-slate-800 text-slate-300 hover:text-white">
+        4. 全拼挑戰
+      </button>
+    </div>
+  </header>
+
+  <!-- 狀態 HUD (關卡與計分) -->
+  <div class="max-w-5xl mx-auto w-full flex items-center justify-between px-3 mb-2 text-xs font-black">
+    <div class="flex items-center gap-2">
+      <span id="vowel-badge" class="px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-amber-300 shadow">短母音 A</span>
+      <span id="progress-text" class="text-sky-200">第 1 / 100 題</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="text-emerald-400"><i class="fa-solid fa-star mr-1"></i> 得分：<span id="score-text">0</span></span>
+      <button onclick="resetGame()" class="text-slate-400 hover:text-white text-xs underline cursor-pointer">重新隨機出題</button>
+    </div>
+  </div>
+
+  <!-- 主遊戲畫布 -->
+  <main class="max-w-5xl mx-auto w-full flex-grow flex flex-col justify-center items-center">
+    <div class="w-full bg-slate-900/95 border-2 border-amber-400 rounded-3xl p-4 sm:p-6 shadow-2xl relative">
+
+      <!-- 發音控制台 -->
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-4">
+        <button onclick="playWholeWord()" class="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-slate-950 font-black text-sm sm:text-base shadow-xl transition active:scale-95 flex items-center gap-2 cursor-pointer">
+          <i class="fa-solid fa-volume-high"></i> 🔊 聽完整單字
+        </button>
+        <button onclick="playSegmentedSounds()" class="px-5 py-2.5 rounded-2xl bg-sky-600 hover:bg-sky-500 text-white font-black text-sm sm:text-base shadow-xl transition active:scale-95 flex items-center gap-2 cursor-pointer">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> 🗣️ 慢速分解發音 (/c/ ... /a/ ... /t/)
+        </button>
+      </div>
+
+      <!-- 火車與車廂容器 (SVG + 動態車廂方塊) -->
+      <div class="relative w-full max-w-2xl mx-auto my-4 py-4 px-2 bg-gradient-to-b from-sky-400/10 to-emerald-500/10 rounded-3xl border border-slate-800 flex flex-col items-center">
+        
+        <!-- 火車頭煙囪與白煙 (SVG) -->
+        <div class="w-full flex justify-end pr-8 sm:pr-12 -mb-3 relative h-10">
+          <svg class="w-12 h-12 smoke-puff absolute right-10 sm:right-14 -top-2" viewBox="0 0 40 40">
+            <circle cx="20" cy="20" r="10" fill="#f8fafc" />
+            <circle cx="26" cy="16" r="8" fill="#f8fafc" />
+          </svg>
+        </div>
+
+        <!-- 火車站台與三節車廂 -->
+        <div class="flex items-center justify-center gap-2 sm:gap-4 w-full">
+          
+          <!-- 車廂 1: Beginning Sound (首子音) -->
+          <div class="flex flex-col items-center">
+            <span class="text-[10px] sm:text-xs text-amber-300 font-bold mb-1">1. 車頭 (首音)</span>
+            <div id="slot-0" onclick="removeLetter(0)" class="w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border-4 border-dashed border-amber-400 bg-slate-800/90 flex items-center justify-center text-4xl sm:text-6xl font-black text-amber-300 shadow-xl cursor-pointer hover:border-amber-300 transition">
+              ?
+            </div>
+            <!-- 車廂輪子 -->
+            <div class="flex gap-4 mt-2">
+              <div class="w-5 h-5 rounded-full border-2 border-slate-400 bg-slate-700 flex items-center justify-center text-[8px] text-slate-400 train-wheel">⚙</div>
+              <div class="w-5 h-5 rounded-full border-2 border-slate-400 bg-slate-700 flex items-center justify-center text-[8px] text-slate-400 train-wheel">⚙</div>
+            </div>
+          </div>
+
+          <!-- 車廂連結器 -->
+          <div class="w-3 h-2 bg-slate-600 rounded -mt-6"></div>
+
+          <!-- 車廂 2: Medial Sound (中間母音) -->
+          <div class="flex flex-col items-center">
+            <span class="text-[10px] sm:text-xs text-rose-300 font-bold mb-1">2. 心臟 (短母音)</span>
+            <div id="slot-1" onclick="removeLetter(1)" class="w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border-4 border-dashed border-rose-400 bg-slate-800/90 flex items-center justify-center text-4xl sm:text-6xl font-black text-rose-300 shadow-xl cursor-pointer hover:border-rose-300 transition">
+              ?
+            </div>
+            <!-- 車廂輪子 -->
+            <div class="flex gap-4 mt-2">
+              <div class="w-5 h-5 rounded-full border-2 border-slate-400 bg-slate-700 flex items-center justify-center text-[8px] text-slate-400 train-wheel">⚙</div>
+              <div class="w-5 h-5 rounded-full border-2 border-slate-400 bg-slate-700 flex items-center justify-center text-[8px] text-slate-400 train-wheel">⚙</div>
+            </div>
+          </div>
+
+          <!-- 車廂連結器 -->
+          <div class="w-3 h-2 bg-slate-600 rounded -mt-6"></div>
+
+          <!-- 車廂 3: Ending Sound (尾子音) -->
+          <div class="flex flex-col items-center">
+            <span class="text-[10px] sm:text-xs text-sky-300 font-bold mb-1">3. 車尾 (尾音)</span>
+            <div id="slot-2" onclick="removeLetter(2)" class="w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border-4 border-dashed border-sky-400 bg-slate-800/90 flex items-center justify-center text-4xl sm:text-6xl font-black text-sky-300 shadow-xl cursor-pointer hover:border-sky-300 transition">
+              ?
+            </div>
+            <!-- 車廂輪子 -->
+            <div class="flex gap-4 mt-2">
+              <div class="w-5 h-5 rounded-full border-2 border-slate-400 bg-slate-700 flex items-center justify-center text-[8px] text-slate-400 train-wheel">⚙</div>
+              <div class="w-5 h-5 rounded-full border-2 border-slate-400 bg-slate-700 flex items-center justify-center text-[8px] text-slate-400 train-wheel">⚙</div>
+            </div>
+          </div>
+
+          <!-- 蒸汽火車頭本體圖標 -->
+          <div class="flex flex-col items-center -mt-4 pl-1">
+            <div class="text-4xl sm:text-6xl filter drop-shadow">🚂</div>
+            <div class="text-[9px] text-slate-400 font-bold">GO!</div>
+          </div>
+
+        </div>
+
+        <!-- 鐵軌 -->
+        <div class="w-11/12 h-2.5 bg-slate-700 rounded-full mt-3 relative overflow-hidden flex items-center justify-around px-2">
+          <div class="w-2 h-4 bg-slate-500"></div>
+          <div class="w-2 h-4 bg-slate-500"></div>
+          <div class="w-2 h-4 bg-slate-500"></div>
+          <div class="w-2 h-4 bg-slate-500"></div>
+          <div class="w-2 h-4 bg-slate-500"></div>
+          <div class="w-2 h-4 bg-slate-500"></div>
+          <div class="w-2 h-4 bg-slate-500"></div>
+          <div class="w-2 h-4 bg-slate-500"></div>
+        </div>
+
+      </div>
+
+      <!-- 提示說明：若填錯點擊車廂可取下 -->
+      <p class="text-center text-[11px] text-slate-400 mb-3">
+        💡 點選下方字母填入車廂；若擺錯位置，只要點擊車廂上的字母即可取下重選！
+      </p>
+
+      <!-- 候選字母磁鐵按鈕區 (Candidate Letters) -->
+      <div id="choices-container" class="flex flex-wrap items-center justify-center gap-3 sm:gap-4 my-2">
+        <!-- 由 JS 動態生成字母磁鐵按鈕 -->
+      </div>
+
+      <!-- 回饋訊息盒 -->
+      <div id="feedback-box" class="hidden p-3.5 rounded-2xl text-xs sm:text-sm font-semibold my-3 leading-relaxed text-center"></div>
+
+      <!-- 下一題按鈕 -->
+      <div class="flex justify-end pt-2 border-t border-slate-800">
+        <button id="next-btn" onclick="nextQuestion()" class="hidden px-7 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-2xl text-sm sm:text-base shadow-lg transition flex items-center gap-2 cursor-pointer">
+          下一班小火車 <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- 終局勝利彈窗 -->
+    <div id="victory-modal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
+      <div class="max-w-md w-full bg-slate-900 border-4 border-amber-400 rounded-3xl p-6 sm:p-8 text-center shadow-2xl">
+        <div class="text-6xl mb-3 animate-bounce">🏆</div>
+        <h2 class="text-2xl sm:text-3xl font-black text-amber-300 mb-2">太厲害了！全數過關！</h2>
+        <p class="text-xs sm:text-sm text-slate-300 mb-6 leading-relaxed">
+          你已經精熟掌握了 100 個 CVC 單字的聽音辨字與拼音技巧，正式成為「自然發音小站長」！
+        </p>
+        <button onclick="resetGame()" class="px-8 py-3 bg-gradient-to-r from-amber-500 to-sky-500 hover:from-amber-400 hover:to-sky-400 text-slate-950 font-black text-base rounded-2xl shadow-2xl transition transform active:scale-95 cursor-pointer">
+          <i class="fa-solid fa-rotate-left mr-1"></i> 再開一趟小火車！
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // ================= 完整 100 個標準 CVC 單字庫 =================
+    const cvc100Words = [
+      // 短母音 A (20 words)
+      { word: "cat", letters: ["c", "a", "t"], vowel: "a", emoji: "🐱" },
+      { word: "bat", letters: ["b", "a", "t"], vowel: "a", emoji: "🦇" },
+      { word: "hat", letters: ["h", "a", "t"], vowel: "a", emoji: "👒" },
+      { word: "rat", letters: ["r", "a", "t"], vowel: "a", emoji: "🐀" },
+      { word: "mat", letters: ["m", "a", "t"], vowel: "a", emoji: "🧘" },
+      { word: "fan", letters: ["f", "a", "n"], vowel: "a", emoji: "🌀" },
+      { word: "pan", letters: ["p", "a", "n"], vowel: "a", emoji: "🍳" },
+      { word: "can", letters: ["c", "a", "n"], vowel: "a", emoji: "🥫" },
+      { word: "man", letters: ["m", "a", "n"], vowel: "a", emoji: "👨" },
+      { word: "van", letters: ["v", "a", "n"], vowel: "a", emoji: "🚐" },
+      { word: "bag", letters: ["b", "a", "g"], vowel: "a", emoji: "🎒" },
+      { word: "tag", letters: ["t", "a", "g"], vowel: "a", emoji: "🏷️" },
+      { word: "rag", letters: ["r", "a", "g"], vowel: "a", emoji: "🧻" },
+      { word: "map", letters: ["m", "a", "p"], vowel: "a", emoji: "🗺️" },
+      { word: "cap", letters: ["c", "a", "p"], vowel: "a", emoji: "🧢" },
+      { word: "tap", letters: ["t", "a", "p"], vowel: "a", emoji: "🚰" },
+      { word: "nap", letters: ["n", "a", "p"], vowel: "a", emoji: "😴" },
+      { word: "jam", letters: ["j", "a", "m"], vowel: "a", emoji: "🍯" },
+      { word: "dam", letters: ["d", "a", "m"], vowel: "a", emoji: "🦫" },
+      { word: "ham", letters: ["h", "a", "m"], vowel: "a", emoji: "🍖" },
+
+      // 短母音 E (20 words)
+      { word: "bed", letters: ["b", "e", "d"], vowel: "e", emoji: "🛏️" },
+      { word: "red", letters: ["r", "e", "d"], vowel: "e", emoji: "🔴" },
+      { word: "fed", letters: ["f", "e", "d"], vowel: "e", emoji: "🥣" },
+      { word: "wed", letters: ["w", "e", "d"], vowel: "e", emoji: "💍" },
+      { word: "hen", letters: ["h", "e", "n"], vowel: "e", emoji: "🐔" },
+      { word: "pen", letters: ["p", "e", "n"], vowel: "e", emoji: "🖊️️" },
+      { word: "ten", letters: ["t", "e", "n"], vowel: "e", emoji: "🔟" },
+      { word: "men", letters: ["m", "e", "n"], vowel: "e", emoji: "👥" },
+      { word: "den", letters: ["d", "e", "n"], vowel: "e", emoji: "🐻" },
+      { word: "net", letters: ["n", "e", "t"], vowel: "e", emoji: "🥅" },
+      { word: "jet", letters: ["j", "e", "t"], vowel: "e", emoji: "✈️️" },
+      { word: "wet", letters: ["w", "e", "t"], vowel: "e", emoji: "💦" },
+      { word: "pet", letters: ["p", "e", "t"], vowel: "e", emoji: "🐶" },
+      { word: "vet", letters: ["v", "e", "t"], vowel: "e", emoji: "🩺" },
+      { word: "leg", letters: ["l", "e", "g"], vowel: "e", emoji: "🦵" },
+      { word: "beg", letters: ["b", "e", "g"], vowel: "e", emoji: "🙏" },
+      { word: "peg", letters: ["p", "e", "g"], vowel: "e", emoji: "📌" },
+      { word: "web", letters: ["w", "e", "b"], vowel: "e", emoji: "🕸️" },
+      { word: "gem", letters: ["g", "e", "m"], vowel: "e", emoji: "💎" },
+      { word: "hem", letters: ["h", "e", "m"], vowel: "e", emoji: "🧵" },
+
+      // 短母音 I (20 words)
+      { word: "pig", letters: ["p", "i", "g"], vowel: "i", emoji: "🐷" },
+      { word: "big", letters: ["b", "i", "g"], vowel: "i", emoji: "🐘" },
+      { word: "dig", letters: ["d", "i", "g"], vowel: "i", emoji: "⛏️" },
+      { word: "fig", letters: ["f", "i", "g"], vowel: "i", emoji: "🫐" },
+      { word: "wig", letters: ["w", "i", "g"], vowel: "i", emoji: "🦱" },
+      { word: "pin", letters: ["p", "i", "n"], vowel: "i", emoji: "🧷" },
+      { word: "bin", letters: ["b", "i", "n"], vowel: "i", emoji: "🗑️" },
+      { word: "win", letters: ["w", "i", "n"], vowel: "i", emoji: "🏆" },
+      { word: "tin", letters: ["t", "i", "n"], vowel: "i", emoji: "🥫" },
+      { word: "fin", letters: ["f", "i", "n"], vowel: "i", emoji: "🦈" },
+      { word: "sit", letters: ["s", "i", "t"], vowel: "i", emoji: "🪑" },
+      { word: "hit", letters: ["h", "i", "t"], vowel: "i", emoji: "🏏" },
+      { word: "fit", letters: ["f", "i", "t"], vowel: "i", emoji: "💪" },
+      { word: "pit", letters: ["p", "i", "t"], vowel: "i", emoji: "🕳️" },
+      { word: "lit", letters: ["l", "i", "t"], vowel: "i", emoji: "💡" },
+      { word: "zip", letters: ["z", "i", "p"], vowel: "i", emoji: "🤐" },
+      { word: "lip", letters: ["l", "i", "p"], vowel: "i", emoji: "👄" },
+      { word: "tip", letters: ["t", "i", "p"], vowel: "i", emoji: "💁" },
+      { word: "rip", letters: ["r", "i", "p"], vowel: "i", emoji: "📃" },
+      { word: "kid", letters: ["k", "i", "d"], vowel: "i", emoji: "🧒" },
+
+      // 短母音 O (20 words)
+      { word: "dog", letters: ["d", "o", "g"], vowel: "o", emoji: "🐶" },
+      { word: "fog", letters: ["f", "o", "g"], vowel: "o", emoji: "🌫️" },
+      { word: "log", letters: ["l", "o", "g"], vowel: "o", emoji: "🪵" },
+      { word: "jog", letters: ["j", "o", "g"], vowel: "o", emoji: "🏃" },
+      { word: "hog", letters: ["h", "o", "g"], vowel: "o", emoji: "🐗" },
+      { word: "hot", letters: ["h", "o", "t"], vowel: "o", emoji: "🔥" },
+      { word: "pot", letters: ["p", "o", "t"], vowel: "o", emoji: "🍲" },
+      { word: "cot", letters: ["c", "o", "t"], vowel: "o", emoji: "🛏️" },
+      { word: "dot", letters: ["d", "o", "t"], vowel: "o", emoji: "🔘" },
+      { word: "not", letters: ["n", "o", "t"], vowel: "o", emoji: "❌" },
+      { word: "box", letters: ["b", "o", "x"], vowel: "o", emoji: "📦" },
+      { word: "fox", letters: ["f", "o", "x"], vowel: "o", emoji: "🦊" },
+      { word: "ox",  letters: ["o", "x", " "], vowel: "o", emoji: "🐂" },
+      { word: "mop", letters: ["m", "o", "p"], vowel: "o", emoji: "🧹" },
+      { word: "top", letters: ["t", "o", "p"], vowel: "o", emoji: "🔝" },
+      { word: "pop", letters: ["p", "o", "p"], vowel: "o", emoji: "🎈" },
+      { word: "hop", letters: ["h", "o", "p"], vowel: "o", emoji: "🐇" },
+      { word: "rod", letters: ["r", "o", "d"], vowel: "o", emoji: "🎣" },
+      { word: "pod", letters: ["p", "o", "d"], vowel: "o", emoji: "🫛" },
+      { word: "cod", letters: ["c", "o", "d"], vowel: "o", emoji: "🐟" },
+
+      // 短母音 U (20 words)
+      { word: "sun", letters: ["s", "u", "n"], vowel: "u", emoji: "☀️" },
+      { word: "run", letters: ["r", "u", "n"], vowel: "u", emoji: "🏃" },
+      { word: "fun", letters: ["f", "u", "n"], vowel: "u", emoji: "🎪" },
+      { word: "bun", letters: ["b", "u", "n"], vowel: "u", emoji: "🍔" },
+      { word: "gun", letters: ["g", "u", "n"], vowel: "u", emoji: "🔫" },
+      { word: "bus", letters: ["b", "u", "s"], vowel: "u", emoji: "🚌" },
+      { word: "cup", letters: ["c", "u", "p"], vowel: "u", emoji: "☕" },
+      { word: "pup", letters: ["p", "u", "p"], vowel: "u", emoji: "🐕" },
+      { word: "bug", letters: ["b", "u", "g"], vowel: "u", emoji: "🐞" },
+      { word: "hug", letters: ["h", "u", "g"], vowel: "u", emoji: "🤗" },
+      { word: "mug", letters: ["m", "u", "g"], vowel: "u", emoji: "🥛" },
+      { word: "jug", letters: ["j", "u", "g"], vowel: "u", emoji: "🏺" },
+      { word: "rug", letters: ["r", "u", "g"], vowel: "u", emoji: "🧶" },
+      { word: "tub", letters: ["t", "u", "b"], vowel: "u", emoji: "🛁" },
+      { word: "sub", letters: ["s", "u", "b"], vowel: "u", emoji: "🥪" },
+      { word: "rub", letters: ["r", "u", "b"], vowel: "u", emoji: "🧼" },
+      { word: "mud", letters: ["m", "u", "d"], vowel: "u", emoji: "🪵" },
+      { word: "cut", letters: ["c", "u", "t"], vowel: "u", emoji: "✂️" },
+      { word: "nut", letters: ["n", "u", "t"], vowel: "u", emoji: "🥜" },
+      { word: "hut", letters: ["h", "u", "t"], vowel: "u", emoji: "🛖" }
+    ];
+
+    // ================= 音訊合成引擎 =================
+    let audioCtx = null;
+    function initAudio() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      } catch (e) {}
+    }
+
+    function playTone(freq, type = 'sine', duration = 0.15, vol = 0.15) {
+      initAudio();
+      if (!audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    // 火車鳴笛音效 (Toot-Toot!)
+    function playTrainWhistle() {
+      initAudio();
+      if (!audioCtx) return;
+      const playChime = (timeOffset) => {
+        setTimeout(() => {
+          [587.33, 880.00].forEach(f => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(f, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.35);
+          });
+        }, timeOffset);
+      };
+      playChime(0);
+      playChime(220);
+    }
+
+    // 播放整字
+    function playWholeWord() {
+      if (!currentTarget) return;
+      try {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.resume();
+        window.speechSynthesis.cancel();
+
+        const utter = new SpeechSynthesisUtterance(currentTarget.word);
+        utter.lang = 'en-US';
+        utter.rate = 0.85;
+        window.speechSynthesis.speak(utter);
+      } catch (e) {}
+    }
+
+    // 慢速分音 Blending (/c/ ... /a/ ... /t/ -> cat!)
+    function playSegmentedSounds() {
+      if (!currentTarget) return;
+      try {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.resume();
+        window.speechSynthesis.cancel();
+
+        const lts = currentTarget.letters;
+        let delay = 0;
+
+        lts.forEach((letter, i) => {
+          setTimeout(() => {
+            const u = new SpeechSynthesisUtterance(letter);
+            u.lang = 'en-US';
+            u.rate = 0.75;
+            u.pitch = 1.1;
+            window.speechSynthesis.speak(u);
+            playTone(350 + i * 80, 'sine', 0.1, 0.1);
+          }, delay);
+          delay += 550;
+        });
+
+        // 最後融合完整讀出
+        setTimeout(() => {
+          const finalU = new SpeechSynthesisUtterance(currentTarget.word);
+          finalU.lang = 'en-US';
+          finalU.rate = 0.85;
+          window.speechSynthesis.speak(finalU);
+          playTone(650, 'triangle', 0.2, 0.15);
+        }, delay + 200);
+
+      } catch (e) {}
+    }
+
+    function shuffle(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    // ================= 遊戲核心邏輯 =================
+    let currentMode = 'first'; // 'first', 'last', 'middle', 'all'
+    let currentRound = 0;
+    let score = 0;
+    let currentTarget = null;
+    let shuffledDeck = [];
+
+    // 使用者填入狀態 (3格)
+    let userSlots = ["", "", ""];
+    let lockedSlots = [false, false, false]; // 哪些格是系統預先給予的
+    let questionSolved = false;
+
+    function setMode(mode) {
+      currentMode = mode;
+      ['first', 'last', 'middle', 'all'].forEach(m => {
+        const btn = document.getElementById(`mode-btn-${m}`);
+        if (m === mode) {
+          btn.className = "px-2.5 py-1.5 rounded-xl text-xs font-black transition border border-amber-400 bg-amber-500 text-slate-950 shadow";
+        } else {
+          btn.className = "px-2.5 py-1.5 rounded-xl text-xs font-bold transition border border-slate-700 bg-slate-800 text-slate-300 hover:text-white";
+        }
+      });
+      resetGame();
+    }
+
+    function resetGame() {
+      shuffledDeck = shuffle([...cvc100Words]);
+      currentRound = 0;
+      score = 0;
+      document.getElementById('score-text').textContent = score;
+      document.getElementById('victory-modal').classList.add('hidden');
+      setupRound();
+    }
+
+    function setupRound() {
+      if (currentRound >= shuffledDeck.length) {
+        document.getElementById('victory-modal').classList.remove('hidden');
+        playTrainWhistle();
+        return;
+      }
+
+      questionSolved = false;
+      currentTarget = shuffledDeck[currentRound];
+      userSlots = ["", "", ""];
+      lockedSlots = [false, false, false];
+
+      document.getElementById('progress-text').textContent = `第 ${currentRound + 1} / ${shuffledDeck.length} 題`;
+      document.getElementById('vowel-badge').textContent = `短母音 ${currentTarget.vowel.toUpperCase()}`;
+      
+      const feedback = document.getElementById('feedback-box');
+      feedback.classList.add('hidden');
+      document.getElementById('next-btn').classList.add('hidden');
+
+      // 根據關卡決定哪幾格預先填好
+      if (currentMode === 'first') {
+        // 考第 1 格 (首音)，第 2, 3 格預先填好
+        userSlots[1] = currentTarget.letters[1];
+        userSlots[2] = currentTarget.letters[2];
+        lockedSlots[1] = true;
+        lockedSlots[2] = true;
+      } else if (currentMode === 'last') {
+        // 考第 3 格 (尾音)，第 1, 2 格預先填好
+        userSlots[0] = currentTarget.letters[0];
+        userSlots[1] = currentTarget.letters[1];
+        lockedSlots[0] = true;
+        lockedSlots[1] = true;
+      } else if (currentMode === 'middle') {
+        // 考第 2 格 (短母音)，第 1, 3 格預先填好
+        userSlots[0] = currentTarget.letters[0];
+        userSlots[2] = currentTarget.letters[2];
+        lockedSlots[0] = true;
+        lockedSlots[2] = true;
+      } else if (currentMode === 'all') {
+        // 全拼大魔王，3 格全部空白
+        // lockedSlots 全部維持 false
+      }
+
+      renderTrainSlots();
+      generateChoices();
+
+      // 自動播一次整字
+      setTimeout(() => {
+        playWholeWord();
+      }, 350);
+    }
+
+    function renderTrainSlots() {
+      for (let i = 0; i < 3; i++) {
+        const slotEl = document.getElementById(`slot-${i}`);
+        const val = userSlots[i];
+        
+        if (val !== "") {
+          slotEl.textContent = val;
+          slotEl.classList.remove('border-dashed');
+          slotEl.classList.add('border-solid');
+          if (lockedSlots[i]) {
+            slotEl.className = "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border-4 border-solid border-slate-600 bg-slate-800/60 flex items-center justify-center text-4xl sm:text-6xl font-black text-slate-300 shadow-inner";
+          } else {
+            slotEl.className = "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border-4 border-solid border-emerald-400 bg-emerald-950/80 flex items-center justify-center text-4xl sm:text-6xl font-black text-emerald-300 shadow-xl cursor-pointer hover:scale-105 transition";
+          }
+        } else {
+          slotEl.textContent = "?";
+          slotEl.classList.add('border-dashed');
+          slotEl.classList.remove('border-solid');
+          slotEl.className = `w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border-4 border-dashed ${i === 0 ? 'border-amber-400 text-amber-300' : i === 1 ? 'border-rose-400 text-rose-300' : 'border-sky-400 text-sky-300'} bg-slate-800/90 flex items-center justify-center text-4xl sm:text-6xl font-black shadow-xl cursor-pointer`;
+        }
+      }
+    }
+
+    // 產生候選字母按鈕 (包含正確解答與干擾項)
+    function generateChoices() {
+      const choicesContainer = document.getElementById('choices-container');
+      choicesContainer.innerHTML = '';
+
+      let neededLetters = [];
+      for (let i = 0; i < 3; i++) {
+        if (!lockedSlots[i]) {
+          neededLetters.push(currentTarget.letters[i]);
+        }
+      }
+
+      // 挑選干擾字母
+      const alphabet = "abcdefghijklmnopqrstuvwxyz".split("");
+      let candidatePool = [...neededLetters];
+
+      while (candidatePool.length < 5) {
+        const randL = alphabet[Math.floor(Math.random() * alphabet.length)];
+        if (!candidatePool.includes(randL)) {
+          candidatePool.push(randL);
+        }
+      }
+
+      const shuffledChoices = shuffle(candidatePool);
+
+      shuffledChoices.forEach((letter) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = "w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-slate-700 to-slate-800 hover:from-amber-500 hover:to-amber-600 hover:text-slate-950 border-2 border-slate-600 hover:border-white text-white font-black text-2xl sm:text-3xl shadow-xl transition active:scale-95 flex items-center justify-center cursor-pointer";
+        btn.textContent = letter;
+        btn.onclick = () => handleChoiceClick(letter, btn);
+        choicesContainer.appendChild(btn);
+      });
+    }
+
+    // 點擊候選字母：自動填入第一個未鎖定且空白的格子
+    function handleChoiceClick(letter, btnEl) {
+      if (questionSolved) return;
+      initAudio();
+
+      let targetIdx = -1;
+      for (let i = 0; i < 3; i++) {
+        if (!lockedSlots[i] && userSlots[i] === "") {
+          targetIdx = i;
+          break;
+        }
+      }
+
+      if (targetIdx !== -1) {
+        userSlots[targetIdx] = letter;
+        playTone(450 + targetIdx * 70, 'sine', 0.1, 0.15);
+        renderTrainSlots();
+        checkAnswer();
+      }
+    }
+
+    // 點擊車廂上的字母：取下重選
+    function removeLetter(idx) {
+      if (questionSolved) return;
+      if (lockedSlots[idx]) return; // 鎖定格不能拿
+      if (userSlots[idx] === "") return;
+
+      playTone(280, 'sawtooth', 0.08, 0.1);
+      userSlots[idx] = "";
+      renderTrainSlots();
+    }
+
+    // 檢查是否拼對
+    function checkAnswer() {
+      // 檢查是否 3 格都填滿了
+      for (let i = 0; i < 3; i++) {
+        if (userSlots[i] === "") return;
+      }
+
+      const isCorrect = (
+        userSlots[0] === currentTarget.letters[0] &&
+        userSlots[1] === currentTarget.letters[1] &&
+        userSlots[2] === currentTarget.letters[2]
+      );
+
+      const feedback = document.getElementById('feedback-box');
+
+      if (isCorrect) {
+        questionSolved = true;
+        score += 10;
+        document.getElementById('score-text').textContent = score;
+
+        playTrainWhistle();
+
+        // 車廂彈跳動畫
+        for (let i = 0; i < 3; i++) {
+          document.getElementById(`slot-${i}`).classList.add('cart-bounce');
+        }
+
+        feedback.className = "p-3.5 rounded-2xl text-xs sm:text-sm font-semibold my-3 leading-relaxed bg-emerald-950/80 border border-emerald-500 text-emerald-200 block text-center";
+        feedback.innerHTML = `
+          <div class="text-3xl mb-1">${currentTarget.emoji}</div>
+          <i class="fa-solid fa-circle-check text-emerald-400 mr-1.5"></i>
+          <strong>太棒了，拼對了！汽笛響起 Toot-Toot！</strong>
+          正確單字是【<strong>${currentTarget.word.toUpperCase()}</strong>】！
+        `;
+
+        document.getElementById('next-btn').classList.remove('hidden');
+
+      } else {
+        playTone(200, 'sawtooth', 0.25, 0.2);
+
+        feedback.className = "p-3.5 rounded-2xl text-xs sm:text-sm font-semibold my-3 leading-relaxed bg-rose-950/80 border border-rose-500 text-rose-200 block text-center";
+        feedback.innerHTML = `
+          <i class="fa-solid fa-circle-xmark text-rose-400 mr-1.5"></i>
+          <strong>聲音不太一樣喔！點擊車廂上的字母拿下來再試一次！</strong>
+        `;
+      }
+    }
+
+    function nextQuestion() {
+      currentRound++;
+      setupRound();
+    }
+
+    // 頁面加載即刻開始
+    window.addEventListener('DOMContentLoaded', () => {
+      resetGame();
+    });
+  </script>
+</body>
+</html>
